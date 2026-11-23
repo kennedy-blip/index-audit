@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#070a12">
+  <meta name="description" content="Audit SQLite indexes for redundancy, unused access paths, and write amplification.">
+  <title>IndexAudit — Index Health Workbench</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="shell">
+    <header class="topbar glass">
+      <a class="brand" href="/"><span class="brand-mark">IA</span><span>Index<span class="cyan">Audit</span><small>DATABASE INDEX INTELLIGENCE</small></span></a>
+      <div class="engine"><span class="pulse"></span><span><b>IndexAudit Engine: Active</b><small>Index &amp; Redundancy Scanner Ready</small></span></div>
+      <div class="top-actions"><span id="connection" class="connection">CONNECTING API</span><button id="loadPreset" class="btn secondary">Load Over-Indexed Preset</button><button id="runTop" class="btn primary">▶ Run Index Audit</button></div>
+    </header>
+    <main>
+      <section class="hero">
+        <div><div class="eyebrow"><span class="eyebrow-line"></span> INDEX HEALTH WORKBENCH / SQLITE</div><h1>Make every index <span>earn its place.</span></h1><p>Find redundant structures, surface unused candidates, and understand the write cost hiding in your schema.</p></div>
+        <div class="hero-stats">
+          <div class="stat glass"><small>INDEXES SCANNED</small><strong id="statIndexes">—</strong><span>Across detected tables</span></div>
+          <div class="stat glass"><small>CLEANUP CANDIDATES</small><strong id="statCandidates" class="amber">—</strong><span>Review before dropping</span></div>
+          <div class="stat glass"><small>WRITE OVERHEAD</small><strong id="statOverhead">—</strong><span id="statSeverity" class="severity">Awaiting audit</span></div>
+        </div>
+      </section>
+      <section class="workspace">
+        <article class="panel glass editor-panel">
+          <div class="panel-head"><div><span class="step">01 / INPUT</span><h2>Schema &amp; workload</h2></div><span class="live-tag">● EDITABLE</span></div>
+          <label for="ddlSql">DDL SCHEMA <span>CREATE TABLE / CREATE INDEX</span></label>
+          <textarea id="ddlSql" spellcheck="false" class="code-editor" aria-label="Schema DDL"></textarea>
+          <div class="query-head"><label>QUERY SAMPLES <span>FREQUENCY-WEIGHTED</span></label><button id="addQuery" class="text-btn">+ Add query</button></div>
+          <div id="queryList" class="query-list"></div>
+          <div class="input-foot"><label class="ratio-label" for="writeRatio">WRITE RATIO <output id="ratioValue">82%</output></label><input id="writeRatio" type="range" min="0" max="100" value="82"></div>
+          <button id="runAudit" class="btn primary run-wide">Run Index Audit <span>→</span></button>
+          <p class="micro-note">Analysis runs in an isolated, temporary SQLite database. No production connection is made.</p>
+        </article>
+        <article class="panel glass results-panel">
+          <div class="panel-head"><div><span class="step">02 / FINDINGS</span><h2>Index classification</h2></div><span id="resultCount" class="result-count">NO RESULTS</span></div>
+          <div class="legend"><span><i class="dot green"></i> Essential</span><span><i class="dot amber-dot"></i> Review</span><span><i class="dot rose-dot"></i> Duplicate</span></div>
+          <div id="indexResults" class="index-results empty-state"><div class="empty-icon">⌁</div><b>Your index map starts here</b><p>Load a workload preset and run an audit to classify every index.</p></div>
+          <div class="matrix-foot"><span>REDUNDANCY MATRIX</span><span>Ordered column-prefix matching</span></div>
+        </article>
+      </section>
+      <section class="bottom-grid">
+        <article class="panel glass"><div class="panel-head"><div><span class="step">03 / OPTIMIZATION</span><h2>Cleanup impact</h2></div><span class="impact-icon">↘</span></div><div class="impact-number" id="impactNumber">—<small> pts</small></div><p class="muted">Estimated write-overhead score reduction if all flagged candidates are reviewed and removed.</p><div class="impact-track"><span id="impactBar"></span></div><div class="impact-caption"><span>ESTIMATED REDUCTION</span><b id="impactPercent">—</b></div></article>
+        <article class="panel glass cleanup-panel"><div class="panel-head"><div><span class="step">04 / REVIEW</span><h2>Safe cleanup script</h2></div><button id="copySql" class="btn secondary small">Copy SQL</button></div><pre id="cleanupSql" class="cleanup-code">-- Run an audit to generate DROP INDEX candidates.</pre><div class="checkline"><span class="checkmark">✓</span><span>Review each statement and validate critical queries with <code>EXPLAIN QUERY PLAN</code> before applying changes.</span></div></article>
+      </section>
+      <section class="notice"><span>ⓘ</span><p><b>Advisory analysis, not an automatic migration.</b> IndexAudit uses schema and supplied query text to estimate index usefulness. It cannot observe production query plans, index usage counters, or real write latency. Always verify candidates against representative production telemetry and backups.</p></section>
+    </main>
+    <footer><span>INDEXAUDIT <b>v1.0</b> · SQLITE WORKLOAD LAB</span><span>BUILT FOR SAFER SCHEMA DECISIONS <i>◆</i></span></footer>
+  </div>
+  <div id="toast" role="status" aria-live="polite"></div>
+  <script src="/app.js" defer></script>
+</body></html>
