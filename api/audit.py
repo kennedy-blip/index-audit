@@ -51,11 +51,13 @@ def index_catalog(db):
 
 def query_columns(sql, tables):
     hits = set()
+    # Inspect predicate, join, grouping, and ordering expressions rather than
+    # treating SELECT-list or FROM identifiers as index usage evidence.
+    clauses = re.split(r"(?i)\b(?:WHERE|ON|GROUP\s+BY|ORDER\s+BY|HAVING)\b", sql)
+    relevant = " ".join(clauses[1:])
     for table, meta in tables.items():
-        # Restrict candidate columns to known schema identifiers to avoid SQL token false positives.
         for col in meta["columns"]:
-            pattern = r"(?i)(?:\b" + re.escape(col) + r"\b)"
-            if re.search(pattern, sql):
+            if re.search(r"(?i)\b" + re.escape(col) + r"\b", relevant):
                 hits.add((table, col))
     return hits
 
@@ -118,11 +120,17 @@ def audit(payload):
             write_ratio = 0.65
         count = len(index_rows)
         candidates = [ix for ix in index_rows if ix.get("candidate")]
+        table_warnings = [
+            {"table": name, "indexCount": len(meta["indexes"]),
+             "reason": "High secondary-index count combined with a write-heavy workload may increase maintenance cost."}
+            for name, meta in tables.items()
+            if len(meta["indexes"]) >= 4 and write_ratio >= 0.5
+        ]
         # Heuristic, not measured runtime cost: weighted by index count and write ratio.
         overhead = round(min(100, count * write_ratio * 8.5), 1)
         reduction = round((len(candidates) / count * overhead) if count else 0, 1)
         cleanup = ["DROP INDEX IF EXISTS \"" + ix["name"].replace('"','""') + "\";" for ix in candidates]
-        return {"summary":{"tablesScanned":len(tables),"indexesScanned":count,"cleanupCandidates":len(candidates),"writeRatio":round(write_ratio,2),"writeOverheadScore":overhead,"severity":"HIGH" if overhead >= 45 else "MODERATE" if overhead >= 20 else "LOW","estimatedOverheadReduction":reduction,"totalQueryFrequency":total_frequency},"tables":[{"name":name,"columns":meta["columns"],"indexCount":len(meta["indexes"])} for name,meta in tables.items()],"indexes":index_rows,"cleanupSql":cleanup,"caveats":["Column-reference matching is heuristic and does not execute representative data workloads.","SQLite's planner and index statistics vary with data distribution; validate with EXPLAIN QUERY PLAN.","An index can be required by UNIQUE constraints, foreign keys, or queries absent from the supplied sample.","Write-overhead and cleanup-impact values are directional estimates, not measured latency or storage savings."]}
+        return {"summary":{"tablesScanned":len(tables),"indexesScanned":count,"cleanupCandidates":len(candidates),"writeRatio":round(write_ratio,2),"writeOverheadScore":overhead,"severity":"HIGH" if overhead >= 45 else "MODERATE" if overhead >= 20 else "LOW","estimatedOverheadReduction":reduction,"totalQueryFrequency":total_frequency,"tablesWithIndexPressure":len(table_warnings)},"tableWarnings":table_warnings,"tables":[{"name":name,"columns":meta["columns"],"indexCount":len(meta["indexes"])} for name,meta in tables.items()],"indexes":index_rows,"cleanupSql":cleanup,"caveats":["Column-reference matching is heuristic and does not execute representative data workloads.","SQLite's planner and index statistics vary with data distribution; validate with EXPLAIN QUERY PLAN.","An index can be required by UNIQUE constraints, foreign keys, or queries absent from the supplied sample.","Write-overhead and cleanup-impact values are directional estimates, not measured latency or storage savings."]}
     finally:
         db.close()
 
