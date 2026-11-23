@@ -93,9 +93,9 @@ def audit(payload):
         # Same-table identical definitions and left-prefix redundancy.
         for ix in index_rows:
             peers = [p for p in index_rows if p["table"] == ix["table"] and p["name"] != ix["name"]]
-            duplicate = next((p for p in peers if p["columns"] == ix["columns"]), None)
+            duplicate = next((p for p in peers if p["columns"] == ix["columns"] and p["unique"] == ix["unique"] and not p["unique"]), None)
             covering = next((p for p in peers if len(p["columns"]) > len(ix["columns"]) and p["columns"][:len(ix["columns"])] == ix["columns"]), None)
-            if duplicate:
+            if duplicate and ix["origin"] == "c":
                 ix["status"] = "DUPLICATE_DEFINITION"
                 ix["explanation"] = "This index has the same ordered column definition as " + duplicate["name"] + ". Keep one definition after checking uniqueness and constraints."
                 ix["candidate"] = True
